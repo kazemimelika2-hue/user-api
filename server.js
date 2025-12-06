@@ -1,4 +1,4 @@
-// Asign Libraries
+// Asign Libs 
 const express = require('express');
 const app = express();
 const cors = require("cors");
@@ -8,11 +8,14 @@ const userService = require("./user-service.js");
 const passport = require("passport");
 const passportJWT = require("passport-jwt");
 const jwt = require("jsonwebtoken");
+
 let ExtractJwt = passportJWT.ExtractJwt;
 let JwtStrategy = passportJWT.Strategy;
+
 let jwtOptions = {};
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderWithScheme("JWT");
 jwtOptions.secretOrKey = process.env.JWT_SECRET;
+
 let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
     userService.getUserById(jwt_payload._id)
         .then(user => {
@@ -22,14 +25,16 @@ let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
             next(null, false);
         });
 });
+
 passport.use(strategy);
 app.use(passport.initialize());
 
+
 const HTTP_PORT = process.env.PORT || 8080;
+
 app.use(express.json());
 app.use(cors());
 
-//CRUD
 app.post("/api/user/register", (req, res) => {
     userService.registerUser(req.body)
         .then((msg) => {
@@ -42,12 +47,16 @@ app.post("/api/user/register", (req, res) => {
 app.post("/api/user/login", (req, res) => {
     userService.checkUser(req.body)
         .then((user) => {
+
             let payload = {
                 _id: user._id,
                 userName: user.userName
             };
+
             let token = jwt.sign(payload, process.env.JWT_SECRET);
+
             res.json({ "message": "login successful", token: token });
+
         }).catch(msg => {
         res.status(422).json({ "message": msg });
     });
@@ -62,6 +71,7 @@ app.get("/api/user/favourites",
             }).catch(msg => {
             res.status(422).json({ error: msg });
         })
+
     });
 
 app.put("/api/user/favourites/:id",
@@ -94,6 +104,3 @@ userService.connect()
         console.log("unable to start the server: " + err);
         process.exit();
     });
-
-// Export the app for Vercel serverless
-module.exports = app;
