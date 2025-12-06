@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
 let mongoDBConnectionString = process.env.MONGO_URL;
+
 let Schema = mongoose.Schema;
+
 let userSchema = new Schema({
     userName: {
         type: String,
@@ -12,14 +15,15 @@ let userSchema = new Schema({
 });
 
 let User;
-let db;
 
 module.exports.connect = function () {
     return new Promise(function (resolve, reject) {
-        db = mongoose.createConnection(mongoDBConnectionString);
+        let db = mongoose.createConnection(mongoDBConnectionString);
+
         db.on('error', err => {
             reject(err);
         });
+
         db.once('open', () => {
             User = db.model("users", userSchema);
             resolve();
@@ -27,105 +31,97 @@ module.exports.connect = function () {
     });
 };
 
-// Helper to ensure connection
-async function ensureConnected() {
-    if (!User || !db || db.readyState !== 1) {
-        await module.exports.connect();
-    }
+module.exports.registerUser = function (userData) {
+    return new Promise(function (resolve, reject) {
+
+        if (userData.password != userData.password2) {
+            reject("Passwords do not match");
+        } else {
+
+            bcrypt.hash(userData.password, 10).then(hash => {
+
+                userData.password = hash;
+
+                let newUser = new User(userData);
+
+                newUser.save().then(() => {
+                    resolve("User " + userData.userName + " successfully registered");  
+                }).catch(err => {
+                    if (err.code == 11000) {
+                        reject("User Name already taken");
+                    } else {
+                        reject("There was an error creating the user: " + err);
+                    }
+                })
+            }).catch(err => reject(err));
+        }
+    });
+};
+
+module.exports.checkUser = function (userData) {
+    return new Promise(function (resolve, reject) {
+
+        User.findOne({ userName: userData.userName })
+            .exec()
+            .then(user => {
+                bcrypt.compare(userData.password, user.password).then(res => {
+                    if (res === true) {
+                        resolve(user);
+                    } else {
+                        reject("Incorrect password for user " + userData.userName);
+                    }
+                });
+            }).catch(err => {
+                reject("Unable to find user " + userData.userName);
+            });
+    });
+};
+
+module.exports.getFavourites = function (id) {
+    return new Promise(function (resolve, reject) {
+
+        User.findById(id)
+            .exec()
+            .then(user => {
+                resolve(user.favourites)
+            }).catch(err => {
+                reject(`Unable to get favourites for user with id: ${id}`);
+            });
+    });
 }
 
-module.exports.registerUser = async function (userData) {
-    await ensureConnected();
-    
-    if (userData.password != userData.password2) {
-        throw new Error("Passwords do not match");
-    }
-    
-    try {
-        const hash = await bcrypt.hash(userData.password, 10);
-        userData.password = hash;
-        let newUser = new User(userData);
-        await newUser.save();
-        return "User " + userData.userName + " successfully registered";
-    } catch (err) {
-        if (err.code == 11000) {
-            throw new Error("User Name already taken");
-        } else {
-            throw new Error("There was an error creating the user: " + err);
-        }
-    }
-};
+module.exports.addFavourite = function (id, favId) {
 
-module.exports.checkUser = async function (userData) {
-    await ensureConnected();
-    
-    try {
-        const user = await User.findOne({ userName: userData.userName }).exec();
-        if (!user) {
-            throw new Error("Unable to find user " + userData.userName);
-        }
-        const res = await bcrypt.compare(userData.password, user.password);
-        if (res === true) {
-            return user;
-        } else {
-            throw new Error("Incorrect password for user " + userData.userName);
-        }
-    } catch (err) {
-        throw new Error(err.message || "Unable to find user " + userData.userName);
-    }
-};
+    return new Promise(function (resolve, reject) {
 
-module.exports.getUserById = async function (id) {
-    await ensureConnected();
-    
-    try {
-        const user = await User.findById(id).exec();
-        return user;
-    } catch (err) {
-        throw new Error("Unable to find user with id: " + id);
-    }
-};
+        User.findById(id).exec().then(user => {
+            if (user.favourites.length < 50) {
+                User.findByIdAndUpdate(id,
+                    { $addToSet: { favourites: favId } },
+                    { new: true }
+                ).exec()
+                    .then(user => { resolve(user.favourites); })
+                    .catch(err => { reject(`Unable to update favourites for user with id: ${id}`); })
+            } else {
+                reject(`Unable to update favourites for user with id: ${id}`);
+            }
 
-module.exports.getFavourites = async function (id) {
-    await ensureConnected();
-    
-    try {
-        const user = await User.findById(id).exec();
-        return user.favourites;
-    } catch (err) {
-        throw new Error("Unable to get favourites for user with id: " + id);
-    }
-};
+        })
 
-module.exports.addFavourite = async function (id, favId) {
-    await ensureConnected();
-    
-    try {
-        const user = await User.findById(id).exec();
-        if (user.favourites.length < 50) {
-            const updatedUser = await User.findByIdAndUpdate(id,
-                { $addToSet: { favourites: favId } },
-                { new: true }
-            ).exec();
-            return updatedUser.favourites;
-        } else {
-            throw new Error("Unable to update favourites for user with id: " + id);
-        }
-    } catch (err) {
-        throw new Error("Unable to find user with id: " + id);
-    }
-};
+    });
+}
 
-module.exports.removeFavourite = async function (id, favId) {
-    await ensureConnected();
-    
-    try {
-        const user = await User.findByIdAndUpdate(id,
+module.exports.removeFavourite = function (id, favId) {
+    return new Promise(function (resolve, reject) {
+        User.findByIdAndUpdate(id,
             { $pull: { favourites: favId } },
             { new: true }
-        ).exec();
-        return user.favourites;
-    } catch (err) {
-        throw new Error("Unable to update favourites for user with id: " + id);
-    }
-};
+        ).exec()
+            .then(user => {
+                resolve(user.favourites);
+            })
+            .catch(err => {
+                reject(`Unable to update favourites for user with id: ${id}`);
+            })
+    });
+}
