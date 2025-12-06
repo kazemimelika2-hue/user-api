@@ -6,7 +6,7 @@ let mongoDBConnectionString = process.env.MONGO_URL;
 
 let Schema = mongoose.Schema;
 
-// get schema
+// Add Schema and values 
 let userSchema = new Schema({
     userName: {
         type: String,
