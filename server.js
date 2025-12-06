@@ -1,4 +1,5 @@
-// Importing libraries
+// Asign Libraries
+
 const express = require('express');
 const app = express();
 const cors = require("cors");
@@ -15,7 +16,7 @@ let ExtractJwt = passportJWT.ExtractJwt;
 let JwtStrategy = passportJWT.Strategy;
 
 let jwtOptions = {};
-jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderWithScheme("jwt");
+jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderWithScheme("JWT"); // F1 Vercel: change jwt to JWT 
 jwtOptions.secretOrKey = process.env.JWT_SECRET;
 
 let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
@@ -31,13 +32,11 @@ let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
 passport.use(strategy);
 app.use(passport.initialize());
 
-
+// Intialize prot 
 const HTTP_PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(cors());
-
-// CRUD 
 
 app.post("/api/user/register", (req, res) => {
     userService.registerUser(req.body)
@@ -66,6 +65,7 @@ app.post("/api/user/login", (req, res) => {
     });
 });
 
+// CRUD
 app.get("/api/user/favourites",
     passport.authenticate("jwt", { session: false }),
     (req, res) => {
