@@ -1,11 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-
 // Initialize connection
 let mongoDBConnectionString = process.env.MONGO_URL;
-
 let Schema = mongoose.Schema;
-
 // Add Schema and values 
 let userSchema = new Schema({
     userName: {
@@ -15,37 +12,27 @@ let userSchema = new Schema({
     password: String,
     favourites: [String]
 });
-
 let User;
-
 module.exports.connect = function () {
     return new Promise(function (resolve, reject) {
         let db = mongoose.createConnection(mongoDBConnectionString);
-
         db.on('error', err => {
             reject(err);
         });
-
         db.once('open', () => {
             User = db.model("users", userSchema);
             resolve();
         });
     });
 };
-
 module.exports.registerUser = function (userData) {
     return new Promise(function (resolve, reject) {
-
         if (userData.password != userData.password2) {
             reject("Passwords do not match");
         } else {
-
             bcrypt.hash(userData.password, 10).then(hash => {
-
                 userData.password = hash;
-
                 let newUser = new User(userData);
-
                 newUser.save().then(() => {
                     resolve("User " + userData.userName + " successfully registered");  
                 }).catch(err => {
@@ -59,10 +46,8 @@ module.exports.registerUser = function (userData) {
         }
     });
 };
-
 module.exports.checkUser = function (userData) {
     return new Promise(function (resolve, reject) {
-
         User.findOne({ userName: userData.userName })
             .exec()
             .then(user => {
@@ -78,7 +63,6 @@ module.exports.checkUser = function (userData) {
             });
     });
 };
-
 // Get user by ID for JWT authentication
 module.exports.getUserById = function (id) {
     return new Promise(function (resolve, reject) {
@@ -88,28 +72,23 @@ module.exports.getUserById = function (id) {
                 resolve(user);
             })
             .catch(err => {
-                reject(`Unable to find user with id: ${id}`);
+                reject("Unable to find user with id: " + id);
             });
     });
 };
-
 module.exports.getFavourites = function (id) {
     return new Promise(function (resolve, reject) {
-
         User.findById(id)
             .exec()
             .then(user => {
                 resolve(user.favourites)
             }).catch(err => {
-                reject(`Unable to get favourites for user with id: ${id}`);
+                reject("Unable to get favourites for user with id: " + id);
             });
     });
 }
-
 module.exports.addFavourite = function (id, favId) {
-
     return new Promise(function (resolve, reject) {
-
         User.findById(id).exec().then(user => {
             if (user.favourites.length < 50) {
                 User.findByIdAndUpdate(id,
@@ -117,18 +96,13 @@ module.exports.addFavourite = function (id, favId) {
                     { new: true }
                 ).exec()
                     .then(user => { resolve(user.favourites); })
-                    .catch(err => { reject(`Unable to update favourites for user with id: ${id}`); })
+                    .catch(err => { reject("Unable to update favourites for user with id: " + id); })
             } else {
-                reject(`Unable to update favourites for user with id: ${id}`);
+                reject("Unable to update favourites for user with id: " + id);
             }
-
         })
-
     });
-
-
 }
-
 module.exports.removeFavourite = function (id, favId) {
     return new Promise(function (resolve, reject) {
         User.findByIdAndUpdate(id,
@@ -139,7 +113,7 @@ module.exports.removeFavourite = function (id, favId) {
                 resolve(user.favourites);
             })
             .catch(err => {
-                reject(`Unable to update favourites for user with id: ${id}`);
+                reject("Unable to update favourites for user with id: " + id);
             })
     });
 }
