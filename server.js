@@ -9,6 +9,16 @@ const passport = require("passport");
 const passportJWT = require("passport-jwt");
 const jwt = require("jsonwebtoken");
 
+// CORS MUST BE FIRST - before any other middleware!
+app.use(cors({
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
+
 let ExtractJwt = passportJWT.ExtractJwt;
 let JwtStrategy = passportJWT.Strategy;
 let jwtOptions = {};
@@ -29,14 +39,6 @@ passport.use(strategy);
 app.use(passport.initialize());
 
 const HTTP_PORT = process.env.PORT || 8080;
-
-app.use(express.json());
-app.use(cors({
-    origin: '*',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
 
 app.post("/api/user/register", async (req, res) => {
     try {
