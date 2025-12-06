@@ -9,14 +9,8 @@ const passport = require("passport");
 const passportJWT = require("passport-jwt");
 const jwt = require("jsonwebtoken");
 
-// CORS MUST BE FIRST - before any other middleware!
-app.use(cors({
-    origin: '*',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+// CORS configuration - MUST be before any routes
+app.use(cors());
 app.use(express.json());
 
 let ExtractJwt = passportJWT.ExtractJwt;
@@ -104,7 +98,6 @@ app.delete("/api/user/favourites/:id",
 userService.connect()
     .then(() => {
         console.log("Database connected successfully");
-        // Only start server if not in Vercel serverless environment
         if (require.main === module) {
             app.listen(HTTP_PORT, () => { 
                 console.log("API listening on: " + HTTP_PORT); 
@@ -116,5 +109,4 @@ userService.connect()
         process.exit();
     });
 
-// Export the Express app for Vercel serverless functions
 module.exports = app;
