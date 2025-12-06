@@ -27,27 +27,35 @@ app.use(passport.initialize());
 const HTTP_PORT = process.env.PORT || 8080;
 app.use(express.json());
 app.use(cors());
-app.post("/api/user/register", (req, res) => {
-    userService.registerUser(req.body)
-        .then((msg) => {
-            res.json({ "message": msg });
-        }).catch((msg) => {
-        res.status(422).json({ "message": msg });
-    });
+
+app.post("/api/user/register", async (req, res) => {
+    try {
+        console.log("Register body:", req.body);
+        const msg = await userService.registerUser(req.body);
+        console.log("Success:", msg);
+        res.json({ "message": msg });
+    } catch (err) {
+        console.log("Error:", err);
+        res.status(422).json({ "message": err && err.message ? err.message : String(err) });
+    }
 });
-app.post("/api/user/login", (req, res) => {
-    userService.checkUser(req.body)
-        .then((user) => {
-            let payload = {
-                _id: user._id,
-                userName: user.userName
-            };
-            let token = jwt.sign(payload, process.env.JWT_SECRET);
-            res.json({ "message": "login successful", token: token });
-        }).catch(msg => {
-        res.status(422).json({ "message": msg });
-    });
+
+app.post("/api/user/login", async (req, res) => {
+    try {
+        console.log("Login body:", req.body);
+        const user = await userService.checkUser(req.body);
+        let payload = {
+            _id: user._id,
+            userName: user.userName
+        };
+        let token = jwt.sign(payload, process.env.JWT_SECRET);
+        res.json({ "message": "login successful", token: token });
+    } catch (err) {
+        console.log("Login error:", err);
+        res.status(422).json({ "message": err && err.message ? err.message : String(err) });
+    }
 });
+
 app.get("/api/user/favourites",
     passport.authenticate("jwt", { session: false }),
     (req, res) => {
@@ -55,9 +63,10 @@ app.get("/api/user/favourites",
             .then(data => {
                 res.json(data);
             }).catch(msg => {
-            res.status(422).json({ error: msg });
-        })
+                res.status(422).json({ error: msg.toString() });
+            })
     });
+
 app.put("/api/user/favourites/:id",
     passport.authenticate("jwt", { session: false }),
     (req, res) => {
@@ -65,9 +74,10 @@ app.put("/api/user/favourites/:id",
             .then(data => {
                 res.json(data)
             }).catch(msg => {
-            res.status(422).json({ error: msg });
-        })
+                res.status(422).json({ error: msg.toString() });
+            })
     });
+
 app.delete("/api/user/favourites/:id",
     passport.authenticate("jwt", { session: false }),
     (req, res) => {
@@ -75,17 +85,23 @@ app.delete("/api/user/favourites/:id",
             .then(data => {
                 res.json(data)
             }).catch(msg => {
-            res.status(422).json({ error: msg });
-        })
+                res.status(422).json({ error: msg.toString() });
+            })
     });
 
-// Initialize database connection for serverless
 userService.connect()
     .then(() => {
         console.log("Database connected successfully");
+        // Only start server if not in Vercel serverless environment
+        if (require.main === module) {
+            app.listen(HTTP_PORT, () => { 
+                console.log("API listening on: " + HTTP_PORT); 
+            });
+        }
     })
     .catch((err) => {
         console.log("unable to connect to database: " + err);
+        process.exit();
     });
 
 // Export the Express app for Vercel serverless functions
