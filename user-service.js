@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Initialize conecction
+// Initialize connection
 let mongoDBConnectionString = process.env.MONGO_URL;
 
 let Schema = mongoose.Schema;
@@ -75,6 +75,20 @@ module.exports.checkUser = function (userData) {
                 });
             }).catch(err => {
                 reject("Unable to find user " + userData.userName);
+            });
+    });
+};
+
+// Get user by ID for JWT authentication
+module.exports.getUserById = function (id) {
+    return new Promise(function (resolve, reject) {
+        User.findById(id)
+            .exec()
+            .then(user => {
+                resolve(user);
+            })
+            .catch(err => {
+                reject(`Unable to find user with id: ${id}`);
             });
     });
 };
