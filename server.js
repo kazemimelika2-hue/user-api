@@ -8,11 +8,13 @@ const userService = require("./user-service.js");
 const passport = require("passport");
 const passportJWT = require("passport-jwt");
 const jwt = require("jsonwebtoken");
+
 let ExtractJwt = passportJWT.ExtractJwt;
 let JwtStrategy = passportJWT.Strategy;
 let jwtOptions = {};
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderWithScheme("JWT");
 jwtOptions.secretOrKey = process.env.JWT_SECRET;
+
 let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
     userService.getUserById(jwt_payload._id)
         .then(user => {
@@ -22,11 +24,19 @@ let strategy = new JwtStrategy(jwtOptions, (jwt_payload, next) => {
             next(null, false);
         });
 });
+
 passport.use(strategy);
 app.use(passport.initialize());
+
 const HTTP_PORT = process.env.PORT || 8080;
+
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.post("/api/user/register", async (req, res) => {
     try {
